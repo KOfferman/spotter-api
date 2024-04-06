@@ -1,0 +1,42 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: ['main']
+  pull_request:
+    branches: ['main']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_ACCESS_KEY_ID: ${{secrets.AWS_ACCESS_KEY_ID}}
+      AWS_REGION: ${{secrets.AWS_REGION}}
+      AWS_SECRET_ACCESS_KEY: ${{secrets.AWS_SECRET_ACCESS_KEY}}
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Add env
+        run: |
+          echo "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" >> .env
+          echo "AWS_REGION=${AWS_REGION}" >> .env
+          echo "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}" >> .env
+      - name: Login to docker hub
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+      - name: Build docker image
+        run: docker build -t klarv/spotter-test-api .
+      - name: Publish image to docker hub
+        run: docker push klarv/spotter-test-api:latest
+
+  deploy:
+    needs: build
+    runs-on: aws-ec2
+
+    steps:
+      - name: Pull image from docker hub
+        run: docker pull klarv/spotter-test-api:latest
+      - name: Delete old container
+        run: docker rm -f nodejs-app-container
+      - name: Run docker container
+        run: docker run -d -p 443:443 --name nodejs-app-container klarv/spotter-test-api

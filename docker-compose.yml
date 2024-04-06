@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  app:
+    container_name: spotter-test-api
+    image: spotter-test-api
+    build: .
+    ports:
+      - '443:443'
+    # Set environment variables
+    environment:
+      - NODE_ENV=development
+      - PORT=443
+    volumes:
+      - .:/app
+    # Specify the working directory inside the container
+    working_dir: /app
+    # Command to run the development server
+    command: npm start
